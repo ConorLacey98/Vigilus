@@ -1,3 +1,4 @@
+# core/db.py
 import sqlite3
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -16,7 +17,7 @@ def init_db() -> None:
     conn = get_connection()
     cur = conn.cursor()
 
-    # raw_items: already used in Phase 1
+    # raw_items: collected OSINT
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS raw_items (
@@ -34,22 +35,26 @@ def init_db() -> None:
         """
     )
 
-    # events: detected higher-level things (possible advisories)
+    # events: now richer with vuln_type, exploitation_status, risk_score, is_kev
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             vendor TEXT,
             product TEXT,
-            cves TEXT,            -- comma-separated string for now
+            cves TEXT,               -- comma-separated string for now
             severity TEXT,
             summary TEXT,
+            vuln_type TEXT,          -- e.g. RCE, auth_bypass, priv_esc, dos, info_disc
+            exploitation_status TEXT, -- e.g. known_exploited, poc_available, under_attack, unknown
+            risk_score INTEGER,      -- 0-100
+            is_kev INTEGER,          -- 0/1
             created_at TEXT NOT NULL
         )
         """
     )
 
-    # event_sources: link events back to raw_items that triggered them
+    # event_sources: link events back to raw_items
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS event_sources (
@@ -62,7 +67,7 @@ def init_db() -> None:
         """
     )
 
-    # meta: simple key/value store (for last_processed_raw_item_id etc.)
+    # meta: key/value store
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS meta (
@@ -135,7 +140,10 @@ def set_meta(key: str, value: str) -> None:
 
 def insert_event(event: Dict[str, Any]) -> int:
     """
-    event: {vendor, product, cves (list or str), severity, summary}
+    event: {
+      vendor, product, cves(list/str), severity, summary,
+      vuln_type, exploitation_status, risk_score(int), is_kev(bool/int)
+    }
     returns new event_id
     """
     conn = get_connection()
@@ -148,10 +156,14 @@ def insert_event(event: Dict[str, Any]) -> int:
         cves_str = cves or ""
 
     created_at = datetime.utcnow().isoformat()
+
     cur.execute(
         """
-        INSERT INTO events (vendor, product, cves, severity, summary, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO events (
+            vendor, product, cves, severity, summary,
+            vuln_type, exploitation_status, risk_score, is_kev, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             event.get("vendor"),
@@ -159,6 +171,10 @@ def insert_event(event: Dict[str, Any]) -> int:
             cves_str,
             event.get("severity"),
             event.get("summary"),
+            event.get("vuln_type"),
+            event.get("exploitation_status"),
+            event.get("risk_score"),
+            int(bool(event.get("is_kev", False))),
             created_at,
         ),
     )
