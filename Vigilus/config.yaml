@@ -1,0 +1,35 @@
+rss_feeds:
+  - name: "BleepingComputer"
+    url: "https://www.bleepingcomputer.com/feed/"
+  - name: "TheHackerNews"
+    url: "https://feeds.feedburner.com/TheHackersNews"
+  # Add vendor advisories / CERTs here later
+
+cisa_kev:
+  enabled: true
+  url: "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+
+detection:
+  vendors:
+    - "F5"
+    - "Fortinet"
+    - "Citrix"
+    - "Palo Alto"
+    - "Cisco"
+    - "Microsoft"
+    - "VMware"
+    - "Ivanti"
+  high_risk_terms:
+    - "remote code execution"
+    - "rce"
+    - "0day"
+    - "zero-day"
+    - "actively exploited"
+    - "in the wild"
+    - "data breach"
+    - "authentication bypass"
+  medium_risk_terms:
+    - "privilege escalation"
+    - "local escalation"
+    - "denial of service"
+    - "dos"
